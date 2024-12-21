@@ -1,0 +1,45 @@
+pipeline {
+    agent none
+    stages {
+        stage('Clean Workspace and Deploy') {
+            parallel {
+                stage('Run on Node 1') {
+                    agent { label 'node1' }
+                    steps {
+                        cleanWorkspaceDeployAndReload()
+                    }
+                }
+                stage('Run on Node 2') {
+                    agent { label 'node2' }
+                    steps {
+                        cleanWorkspaceDeployAndReload()
+                    }
+                }
+            }
+        }
+    }
+}
+
+def cleanWorkspaceDeployAndReload() {
+    script {
+        // Очистка рабочей области
+        deleteDir()
+        
+        // Клонирование репозитория
+        checkout([
+            $class: 'GitSCM',
+            branches: [[name: '*/main']], // Замените на нужную ветку
+            userRemoteConfigs: [[url: 'https://github.com/nazananas/jenkins_http_server.git']]
+        ])
+        
+        // Копирование файла index.html
+        sh '''
+        sudo cp index.html /usr/share/nginx/html/
+        '''
+        
+        // Перезагрузка Nginx
+        sh '''
+        sudo systemctl reload nginx
+        '''
+    }
+}
